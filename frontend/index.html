@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Frontend básico API Gateway</title>
+  </head>
+  <body>
+    <h1>Frontend con FastAPI Gateway</h1>
+
+    <button id="btnGet">Obtener Posts</button>
+    <div id="output"></div>
+
+    <script>
+      const baseUrl = "http://127.0.0.1:8000";
+      const token = "mi-super-api-key"; 
+
+      document.getElementById("btnGet").addEventListener("click", async () => {
+        try {
+          const res = await fetch(`${baseUrl}/proxy/posts`, {
+            headers: {
+             "X-API-KEY": token
+            },
+          });
+          if (!res.ok) throw new Error("Error en la petición");
+          const data = await res.json();
+
+          document.getElementById("output").innerHTML =
+            "<pre>" + JSON.stringify(data.slice(0, 5), null, 2) + "</pre>"; // mostramos 5 primeros
+        } catch (err) {
+          document.getElementById("output").textContent = "❌ " + err.message;
+        }
+      });
+    </script>
+  </body>
+</html>

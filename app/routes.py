@@ -1,29 +1,35 @@
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request, HTTPException
 import httpx
 
 router = APIRouter()
 
+ALLOWED_RESOURCES = {"posts", "comments", "users"}
+
 BASE_URL = "https://jsonplaceholder.typicode.com"
 
-@router.get("/proxy/{resource}")
-async def proxy_get(resource: str, request: Request):
-    """
-    Proxy dinámico que reenvía la petición GET a JSONPlaceholder.
-    """
-
-    # --- Seguridad básica ---
-    # ✅ Validar que el recurso es "seguro" (evitamos SSRF o rutas maliciosas)
-    allowed_resources = {"posts", "comments", "users", "albums", "photos", "todos"}
-    if resource not in allowed_resources:
+@router.api_route("/proxy/{resource}", methods=["GET", "POST", "PUT", "DELETE"])
+async def proxy(resource: str, request: Request):
+    if resource not in ALLOWED_RESOURCES:
         raise HTTPException(status_code=400, detail="Recurso no permitido")
 
-    # --- Query params ---
-    query_params = dict(request.query_params)
+    # Construir la URL destino
+    url = f"{BASE_URL}/{resource}"
 
     try:
         async with httpx.AsyncClient() as client:
-            response = await client.get(f"{BASE_URL}/{resource}", params=query_params)
+            if request.method == "GET":
+                response = await client.get(url)
+            elif request.method == "POST":
+                body = await request.json()
+                response = await client.post(url, json=body)
+            elif request.method == "PUT":
+                body = await request.json()
+                response = await client.put(url, json=body)
+            elif request.method == "DELETE":
+                response = await client.delete(url)
+
             response.raise_for_status()
             return response.json()
+
     except httpx.HTTPError as e:
         raise HTTPException(status_code=502, detail=f"Error al contactar con servicio externo: {str(e)}")
